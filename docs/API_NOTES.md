@@ -74,3 +74,10 @@ Voice/photo/diagnose/translate routes, provider assignments, planner and admin r
 - GET /admin/planner/runs (latest 20), GET /admin/planner/runs/{id} (same shape),
   POST /admin/planner/runs/{id}/confirm (dry_run -> confirmed; stale assignments are dropped and listed in `dropped`).
 - Planner-mode providers get an empty GET /requests feed; they work from /provider/assignments.
+## Emergency mode additions
+- POST /admin/planner/run accepts { emergency?: bool (default false) }. When true, requests with severity
+  >= 50 (High, Critical) are planned first using all providers; the rest only get leftover providers.
+  Requests with unknown severity are never treated as urgent.
+- New unassigned reason: deferred_for_urgent (a provider could serve it, but was used for an urgent request).
+- Planner run assignments now include severity_score and meter_level.
+- summary now includes emergency (bool).

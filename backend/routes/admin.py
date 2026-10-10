@@ -112,6 +112,7 @@ class PlannerRunBody(Schema):
     request_ids: list[UUID] | None = Field(default=None, min_length=1, max_length=MAX_PLANNER_REQUESTS)
     dry_run: bool = True
     require_verified: bool = False
+    emergency: bool = False
 
 
 def _run_view(run_id):
@@ -122,7 +123,8 @@ def _run_view(run_id):
         raise ApiError(404, "NOT_FOUND", "Planner run not found.")
     assignments = fetch_all(
         "SELECT a.id, a.request_id, a.provider_id, a.distance_km, a.score, a.status::text AS status, "
-        "r.title AS request_title, p.full_name AS provider_name "
+        "r.title AS request_title, r.severity_score, r.meter_level::text AS meter_level, "
+        "p.full_name AS provider_name "
         "FROM planner_assignments a JOIN requests r ON r.id = a.request_id JOIN profiles p ON p.id = a.provider_id "
         "WHERE a.run_id = :id ORDER BY a.score DESC NULLS LAST, a.id",
         {"id": run_id},
@@ -143,7 +145,7 @@ def _run_view(run_id):
         "unassigned": unassigned,
         "unassigned_request_ids": [u["request_id"] for u in unassigned],
         "dropped": dropped if isinstance(dropped, list) else [],
-        "summary": {k: summary.get(k) for k in ("requests_considered", "providers_considered", "assigned", "require_verified")},
+        "summary": {k: summary.get(k) for k in ("requests_considered", "providers_considered", "assigned", "require_verified", "emergency")},
     }
 
 
@@ -200,7 +202,7 @@ def planner_run():
     )
 
     try:
-        result = plan_assignments(candidates, providers)
+        result = plan_assignments(candidates, providers, emergency=body.emergency)
     except ValueError:
         raise ApiError(422, "VALIDATION_ERROR", "Too many requests or providers for one run. Select fewer requests.")
 
@@ -210,6 +212,7 @@ def planner_run():
         "providers_considered": len(providers),
         "assigned": len(result["assignments"]),
         "require_verified": body.require_verified,
+        "emergency": body.emergency,
         "unassigned": unassigned,
     }
     status = "dry_run" if body.dry_run else "confirmed"

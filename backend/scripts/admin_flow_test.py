@@ -72,11 +72,13 @@ DIAG = {
     "estimated_duration_minutes": 90, "safety_warning": None, "follow_up_questions": [], "language": "en"}
 created = []
 
-
-def make_request(title):
+def make_request(title, severity=None, meter=None, lat_offset=0.0):
+    diag = dict(DIAG)
+    if severity is not None:
+        diag["severity_score"], diag["meter_level"] = severity, meter
     s, r = call("POST", "/requests", customer, json={
         "category": "plumbing", "title": title, "description": "Automated planner test",
-        "lat": SYDNEY[0], "lng": SYDNEY[1], "language": "en", "diagnosis": DIAG})
+        "lat": SYDNEY[0] + lat_offset, "lng": SYDNEY[1], "language": "en", "diagnosis": diag})
     if s == 201:
         created.append(r["id"])
     return s, r
@@ -155,6 +157,21 @@ def run_tests():
     s, b = call("GET", f"/requests/{rb['id']}", customer)
     check("declined request stays open", s == 200 and b["status"] == "open", (s, b))
 
+    # ---- scenario 1b: emergency mode (dry run only, nothing is published)
+    s, minor = make_request("Flow test: emergency minor", severity=20, meter="low")
+    s2, crit = make_request("Flow test: emergency critical", severity=90, meter="critical", lat_offset=0.2)
+    check("create the two emergency-test requests", s == 201 and s2 == 201, (s, minor, s2, crit))
+    if s == 201 and s2 == 201:
+        s, em = call("POST", "/admin/planner/run", admin,
+                    json={"request_ids": [minor["id"], crit["id"]], "emergency": True})
+        check("emergency run gives the only provider to the critical request",
+                s == 201 and em["summary"]["emergency"] is True and len(em["assignments"]) == 1
+                and em["assignments"][0]["request_id"] == crit["id"], (s, em))
+        check("emergency assignment exposes severity and meter level",
+                s == 201 and em["assignments"] and em["assignments"][0]["meter_level"] == "critical", (s, em))
+        check("the minor request is deferred for the urgent one",
+                s == 201 and {"request_id": minor["id"], "reason": "deferred_for_urgent"} in em["unassigned"], (s, em))
+           
     # ---- scenario 2: dry run, confirm, provider accepts
     s, ra = make_request("Flow test: planner A")
     s, dry = call("POST", "/admin/planner/run", admin, json={"request_ids": [ra["id"]]})

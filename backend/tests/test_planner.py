@@ -147,3 +147,104 @@ def test_oversized_problem_is_rejected():
     providers = [prov(f"P{i}", 12.9, 77.5) for i in range(600)]
     with pytest.raises(ValueError):
         plan_assignments(requests, providers)
+
+
+
+# ---------------------------------------------------------------- emergency mode
+
+def test_emergency_off_is_unchanged_by_the_new_option():
+    requests = [req("R1", 12.90, 77.50, sev=90), req("R2", 12.91, 77.50, sev=20)]
+    providers = [prov("P1", 12.90, 77.50), prov("P2", 12.92, 77.50)]
+    assert plan_assignments(requests, providers) == plan_assignments(requests, providers, emergency=False)
+
+
+def test_emergency_gives_the_only_provider_to_the_urgent_request_even_if_far():
+    # Normal mode: distance can outweigh severity, so the nearby minor job wins the lone provider.
+    # Emergency mode: the critical request must win regardless of distance.
+    requests = [
+        req("critical", 13.35, 77.50, sev=75),  # about 50 km away
+        req("minor", 12.901, 77.50, sev=45),    # about 0.1 km away, not urgent
+    ]
+    providers = [prov("P1", 12.90, 77.50, radius=100)]
+    normal = plan_assignments(requests, providers)
+    assert pairs(normal) == {"minor": "P1"}
+    emergency = plan_assignments(requests, providers, emergency=True)
+    assert pairs(emergency) == {"critical": "P1"}
+    assert reasons(emergency) == {"minor": "deferred_for_urgent"}
+
+
+def test_emergency_gives_standard_requests_only_the_leftover_providers():
+    requests = [
+        req("urgent", 12.90, 77.50, sev=80),
+        req("standard", 12.95, 77.50, sev=30),
+    ]
+    providers = [prov("P1", 12.90, 77.50), prov("P2", 12.96, 77.50)]
+    result = plan_assignments(requests, providers, emergency=True)
+    assert pairs(result) == {"urgent": "P1", "standard": "P2"}
+    assert result["unassigned"] == []
+
+
+def test_emergency_reason_is_no_capacity_when_urgent_tier_did_not_take_the_provider():
+    # Two standard requests compete for one provider; no urgent request exists.
+    requests = [req("A", 12.90, 77.50, sev=30), req("B", 12.91, 77.50, sev=20)]
+    result = plan_assignments(requests, [prov("P1", 12.90, 77.50)], emergency=True)
+    assert len(result["assignments"]) == 1
+    assert set(reasons(result).values()) == {"no_capacity"}
+
+
+def test_emergency_keeps_no_provider_in_range_reason():
+    requests = [req("urgent", 12.90, 77.50, sev=90, cat="electrical"), req("minor", 12.90, 77.50, sev=10)]
+    result = plan_assignments(requests, [prov("P1", 12.90, 77.50)], emergency=True)
+    assert pairs(result) == {"minor": "P1"}
+    assert reasons(result) == {"urgent": "no_provider_in_range"}
+
+
+def test_emergency_unknown_severity_is_not_urgent():
+    unknown = {"id": "U", "category": "plumbing", "lat": 12.90, "lng": 77.50, "severity_score": None}
+    high = req("H", 12.99, 77.50, sev=60)
+    result = plan_assignments([unknown, high], [prov("P1", 12.90, 77.50, radius=20)], emergency=True)
+    assert pairs(result) == {"H": "P1"}
+    assert reasons(result) == {"U": "deferred_for_urgent"}
+
+
+def test_emergency_threshold_is_fifty():
+    requests = [req("at50", 12.99, 77.50, sev=50), req("at49", 12.901, 77.50, sev=49)]
+    result = plan_assignments(requests, [prov("P1", 12.90, 77.50, radius=20)], emergency=True)
+    assert pairs(result) == {"at50": "P1"}
+
+
+def test_emergency_still_maximises_urgent_requests_served():
+    requests = [
+        req("U1", 12.90, 77.50, cat="plumbing", sev=90),
+        req("U2", 12.91, 77.50, cat="electrical", sev=80),
+    ]
+    providers = [
+        prov("P1", 12.90, 77.50, cats=("plumbing", "electrical")),
+        prov("P2", 12.95, 77.50, cats=("plumbing",)),
+    ]
+    result = plan_assignments(requests, providers, emergency=True)
+    assert pairs(result) == {"U1": "P2", "U2": "P1"}
+
+
+def test_emergency_result_does_not_depend_on_input_order():
+    requests = [req(f"R{i}", 12.90 + i * 0.004, 77.50, sev=15 * i) for i in range(7)]
+    providers = [prov(f"P{i}", 12.90 + i * 0.006, 77.51, rating=3 + i * 0.3) for i in range(3)]
+    baseline = plan_assignments(requests, providers, emergency=True)
+    for seed in range(5):
+        rnd = random.Random(seed)
+        shuffled_r, shuffled_p = requests[:], providers[:]
+        rnd.shuffle(shuffled_r)
+        rnd.shuffle(shuffled_p)
+        assert plan_assignments(shuffled_r, shuffled_p, emergency=True) == baseline
+
+
+def test_emergency_output_fields_are_unchanged():
+    result = plan_assignments([req("R1", 12.91, 77.50, sev=90)], [prov("P1", 12.90, 77.50, radius=10)], emergency=True)
+    assert set(result["assignments"][0]) == {"request_id", "provider_id", "distance_km", "score"}
+
+
+def test_emergency_oversized_problem_is_still_rejected():
+    requests = [req(f"R{i}", 12.9, 77.5, sev=90) for i in range(600)]
+    providers = [prov(f"P{i}", 12.9, 77.5) for i in range(600)]
+    with pytest.raises(ValueError):
+        plan_assignments(requests, providers, emergency=True)
