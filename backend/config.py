@@ -21,7 +21,9 @@ class Config:
     DATABASE_URL = os.getenv("DATABASE_URL", "")
     SUPABASE_URL = os.getenv("SUPABASE_URL", "").rstrip("/")
     SUPABASE_SERVICE_ROLE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY", "")
-    SUPABASE_JWT_SECRET = os.getenv("SUPABASE_JWT_SECRET", "")
+    SUPABASE_JWKS_URL = os.getenv("SUPABASE_JWKS_URL", "")
+    JWT_AUDIENCE = os.getenv("JWT_AUDIENCE", "authenticated")
+    JWT_LEEWAY_SECONDS = int(os.getenv("JWT_LEEWAY_SECONDS", "10"))
 
     GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
     GROQ_STT_MODEL = os.getenv("GROQ_STT_MODEL", "whisper-large-v3-turbo")
