@@ -12,6 +12,7 @@ from pagination import paginated, parse_pagination, parse_sort
 from query_utils import parse_choice, parse_float
 from services import diagnosis as dg
 from services import groq_client
+from services import storage
 from services.access import (
     PROVIDER_EVENT_FILTER,
     REQUEST_COLUMNS,
@@ -64,12 +65,14 @@ class RequestCreate(Schema):
 def _decorate(req, user):
     rid = req["id"]
     media = fetch_all(
-        "SELECT id, kind::text AS kind, mime, size_bytes, created_at "
+        "SELECT id, kind::text AS kind, mime, size_bytes, created_at, storage_path "
         "FROM request_media WHERE request_id = :rid ORDER BY created_at",
         {"rid": rid},
     )
     for item in media:
-        item["url"] = None  # signed URLs are added in the upload step
+        path = item.pop("storage_path")
+        bucket = storage.BUCKETS.get(item["kind"])
+        item["url"] = storage.signed_url(bucket, path) if bucket else None
     req["media"] = media
     req["offer_count"] = fetch_one(
         "SELECT count(*) AS n FROM offers WHERE request_id = :rid AND status IN ('pending', 'accepted')",
