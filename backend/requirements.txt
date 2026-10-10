@@ -1,0 +1,13 @@
+Flask>=3.0,<4
+flask-cors>=4.0
+SQLAlchemy>=2.0,<2.1
+psycopg[binary]>=3.2
+PyJWT[crypto]>=2.8
+pydantic>=2.5
+python-dotenv>=1.0
+requests>=2.31
+groq>=0.9
+numpy>=1.26
+scipy>=1.11
+gunicorn>=22.0
+pytest>=8.0
