@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>FixFlow - log in</title>
+  <link rel="stylesheet" href="/css/styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <a class="logo" href="/index.html">FixFlow<span>.</span></a>
+    <a class="muted" href="/index.html">&larr; Back</a>
+  </header>
+
+  <main class="auth-wrap">
+    <section class="card auth-card">
+      <p class="eyebrow" id="portalLabel"></p>
+      <h1 id="title"></h1>
+      <p class="muted" id="subtitle"></p>
+
+      <div id="notice" class="notice hidden"></div>
+
+      <div class="tabs" id="tabs">
+        <button type="button" class="tab active" data-tab="login">Log in</button>
+        <button type="button" class="tab" data-tab="signup">Sign up</button>
+      </div>
+
+      <form id="loginForm" novalidate>
+        <div class="field">
+          <label for="loginEmail">Email</label>
+          <input id="loginEmail" type="email" autocomplete="email" required>
+        </div>
+        <div class="field">
+          <label for="loginPassword">Password</label>
+          <input id="loginPassword" type="password" autocomplete="current-password" required>
+        </div>
+        <button class="btn block" type="submit" id="loginBtn">Log in</button>
+      </form>
+
+      <form id="signupForm" class="hidden" novalidate>
+        <div class="field">
+          <label for="signName">Full name</label>
+          <input id="signName" type="text" autocomplete="name" required>
+        </div>
+        <div class="field">
+          <label for="signEmail">Email</label>
+          <input id="signEmail" type="email" autocomplete="email" required>
+        </div>
+        <div class="field">
+          <label for="signPassword">Password (at least 8 characters)</label>
+          <input id="signPassword" type="password" autocomplete="new-password" minlength="8" required>
+        </div>
+        <button class="btn block" type="submit" id="signupBtn">Create account</button>
+      </form>
+
+      <p class="switch" id="switch"></p>
+    </section>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="/js/config.js"></script>
+  <script src="/js/api.js"></script>
+  <script src="/js/ui.js"></script>
+  <script>
+    (function () {
+      const params = new URLSearchParams(location.search);
+      let role = params.get('role');
+      if (['customer', 'provider', 'admin'].indexOf(role) < 0) role = 'customer';
+
+      const COPY = {
+        customer: {
+          label: 'Customer', title: 'Welcome, homeowner',
+          login: 'Log in to post problems and compare offers.',
+          signup: 'Create a customer account to get help fast.',
+          other: { role: 'provider', text: 'Are you a service provider? Use the provider login.' },
+        },
+        provider: {
+          label: 'Service provider', title: 'Welcome back, professional',
+          login: 'Log in to find nearby jobs and manage bookings.',
+          signup: 'Create a provider account. You will set your skills and area next.',
+          other: { role: 'customer', text: 'Need a service instead? Use the customer login.' },
+        },
+        admin: {
+          label: 'Admin', title: 'Admin login',
+          login: 'Platform tools and the Recovery Planner.',
+          signup: '',
+          other: { role: 'customer', text: 'Not an admin? Go to the customer login.' },
+        },
+      };
+
+      const $ = (id) => document.getElementById(id);
+      const c = COPY[role];
+      $('portalLabel').textContent = c.label;
+      $('title').textContent = c.title;
+      $('switch').innerHTML = '<a href="/login.html?role=' + c.other.role + '">' + FixUI.esc(c.other.text) + '</a>';
+
+      const notice = $('notice');
+      function showNotice(msg, isError) {
+        notice.textContent = msg;
+        notice.className = 'notice' + (isError ? ' error' : '');
+      }
+      function clearNotice() { notice.className = 'notice hidden'; notice.textContent = ''; }
+
+      function setTab(tab) {
+        $('loginForm').classList.toggle('hidden', tab !== 'login');
+        $('signupForm').classList.toggle('hidden', tab !== 'signup');
+        document.querySelectorAll('.tab').forEach(function (b) {
+          b.classList.toggle('active', b.dataset.tab === tab);
+        });
+        $('subtitle').textContent = tab === 'signup' ? c.signup : c.login;
+        clearNotice();
+      }
+
+      if (role === 'admin') {
+        $('tabs').classList.add('hidden');
+        setTab('login');
+      } else {
+        document.querySelectorAll('.tab').forEach(function (b) {
+          b.addEventListener('click', function () { setTab(b.dataset.tab); });
+        });
+        setTab(params.get('tab') === 'signup' ? 'signup' : 'login');
+      }
+
+      try {
+        const saved = sessionStorage.getItem('fixflow_notice');
+        if (saved) { showNotice(saved, true); sessionStorage.removeItem('fixflow_notice'); }
+      } catch (e) { /* ignore */ }
+
+      $('loginForm').addEventListener('submit', async function (e) {
+        e.preventDefault();
+        clearNotice();
+        const email = $('loginEmail').value, pw = $('loginPassword').value;
+        if (!email || !pw) { showNotice('Enter your email and password.', true); return; }
+        const btn = $('loginBtn');
+        FixUI.setBusy(btn, true, 'Logging in...');
+        try {
+          const m = await FixAPI.signIn(role, email, pw);
+          FixAPI.goHome(m.profile.role);
+        } catch (err) {
+          showNotice(err.message, true);
+          FixUI.setBusy(btn, false);
+        }
+      });
+
+      $('signupForm').addEventListener('submit', async function (e) {
+        e.preventDefault();
+        clearNotice();
+        const name = $('signName').value.trim(), email = $('signEmail').value, pw = $('signPassword').value;
+        if (!name) { showNotice('Please enter your full name.', true); return; }
+        if (!email) { showNotice('Please enter your email.', true); return; }
+        if (pw.length < 8) { showNotice('Use a password with at least 8 characters.', true); return; }
+        const btn = $('signupBtn');
+        FixUI.setBusy(btn, true, 'Creating account...');
+        try {
+          const m = await FixAPI.signUp(role, name, email, pw);
+          FixAPI.goHome(m.profile.role);
+        } catch (err) {
+          showNotice(err.message, err.code !== 'CONFIRM_EMAIL');
+          FixUI.setBusy(btn, false);
+        }
+      });
+    })();
+  </script>
+</body>
+</html>

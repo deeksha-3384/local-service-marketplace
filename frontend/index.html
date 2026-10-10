@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>FixFlow - home repairs, handled</title>
+  <link rel="stylesheet" href="/css/styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <a class="logo" href="/index.html">FixFlow<span>.</span></a>
+  </header>
+
+  <section class="hero">
+    <h1>Home repairs, handled.</h1>
+    <p>Speak or photograph the problem in your own language. We find the right local professional.</p>
+  </section>
+
+  <section class="doors">
+    <a class="card door" href="/login.html?role=customer">
+      <div class="icon">&#127968;</div>
+      <h2>I need a service</h2>
+      <p>Describe a problem, compare offers and book a trusted professional.</p>
+      <span class="btn">Customer login &rarr;</span>
+    </a>
+    <a class="card door" href="/login.html?role=provider">
+      <div class="icon">&#128295;</div>
+      <h2>I offer a service</h2>
+      <p>Find nearby jobs, send offers and manage your bookings.</p>
+      <span class="btn ghost">Service provider login &rarr;</span>
+    </a>
+  </section>
+
+  <div class="features">
+    <span class="pill">Voice in 8 languages</span>
+    <span class="pill">Photo diagnosis</span>
+    <span class="pill">Severity meter</span>
+    <span class="pill">Emergency Recovery Planner</span>
+  </div>
+
+  <footer class="footer">
+    Made for the place you call home &middot; <a href="/login.html?role=admin">Admin</a>
+  </footer>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="/js/config.js"></script>
+  <script src="/js/api.js"></script>
+  <script>
+    // Already logged in? Go straight to your own page.
+    (async function () {
+      try {
+        if (await FixAPI.getToken()) {
+          const m = await FixAPI.me();
+          FixAPI.goHome(m.profile.role);
+        }
+      } catch (e) { /* stay on the landing page */ }
+    })();
+  </script>
+</body>
+</html>
