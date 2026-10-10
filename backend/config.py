@@ -29,6 +29,9 @@ class Config:
     GROQ_STT_MODEL = os.getenv("GROQ_STT_MODEL", "whisper-large-v3-turbo")
     GROQ_CHAT_MODEL = os.getenv("GROQ_CHAT_MODEL", "")
     GROQ_VISION_MODEL = os.getenv("GROQ_VISION_MODEL", "")
+    GROQ_STT_MODEL_FALLBACK = os.getenv("GROQ_STT_MODEL_FALLBACK", "whisper-large-v3")
+    GROQ_CHAT_MODEL_FALLBACK = os.getenv("GROQ_CHAT_MODEL_FALLBACK", "openai/gpt-oss-20b")
+    GROQ_TIMEOUT_SECONDS = float(os.getenv("GROQ_TIMEOUT_SECONDS", "30"))
 
     CORS_ORIGINS = _list("CORS_ORIGINS", "http://localhost:5000")
 
