@@ -272,3 +272,12 @@ def photo_prompt(language):
         "If the photo shows no recognizable service problem, say so in summary and use an empty array. "
         "Do not identify people and do not guess brand names."
     )
+
+
+def clean_diagnosis(data, language):
+    """Validates a diagnosis object sent by the client (contract 3.7)."""
+    if not isinstance(data, dict):
+        raise ValueError("diagnosis must be an object")
+    mapped = dict(data)
+    mapped.setdefault("category", mapped.get("recommended_category"))
+    return IntakeResult.model_validate(mapped).to_diagnosis(language)

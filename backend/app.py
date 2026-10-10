@@ -3,6 +3,7 @@ import os
 
 from flask import Flask, jsonify, send_from_directory
 from flask_cors import CORS
+from json_provider import ApiJSONProvider
 from werkzeug.exceptions import NotFound
 
 from config import Config
@@ -18,6 +19,7 @@ def create_app(config_class=Config):
     )
 
     app = Flask(__name__, static_folder=None)
+    app.json = ApiJSONProvider(app)
     app.config.from_object(config_class)
     _validate_config(app)
 

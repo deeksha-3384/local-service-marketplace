@@ -2,6 +2,7 @@ import logging
 
 from flask import jsonify, request
 from werkzeug.exceptions import HTTPException
+from sqlalchemy.exc import OperationalError
 
 log = logging.getLogger(__name__)
 
@@ -58,6 +59,11 @@ def register_error_handlers(app):
         message = _MESSAGES.get(exc.code) or exc.description or exc.name
         return _json_error(exc.code, code, message)
 
+    @app.errorhandler(OperationalError)
+    def handle_db_unavailable(exc):
+        log.exception("Database error on %s %s", request.method, request.path)
+        return _json_error(503, "DB_UNAVAILABLE", "The database is temporarily unavailable.")
+    
     @app.errorhandler(Exception)
     def handle_unexpected(exc):
         log.exception("Unhandled error on %s %s", request.method, request.path)

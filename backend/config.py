@@ -37,6 +37,7 @@ class Config:
 
     MAX_AUDIO_MB = int(os.getenv("MAX_AUDIO_MB", "10"))
     MAX_PHOTO_MB = int(os.getenv("MAX_PHOTO_MB", "5"))
+    DEFAULT_CURRENCY = os.getenv("DEFAULT_CURRENCY", "INR")
     # Flask rejects larger request bodies with 413 automatically
     MAX_CONTENT_LENGTH = (max(MAX_AUDIO_MB, MAX_PHOTO_MB) + 1) * 1024 * 1024
 
