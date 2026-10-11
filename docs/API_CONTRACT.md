@@ -42,8 +42,9 @@ Supabase pooler string, form postgresql+psycopg://user:pass@host:6543/postgres
 SUPABASE_URL
 Project URL
 SUPABASE_SERVICE_ROLE_KEY
+value is the secret key (sb_secret_...)
 Server only, never to the browser
-SUPABASE_JWT_SECRET
+SUPABASE_JWKS_URL | Public key address; tokens are verified with ES256, audience authenticated
 For verifying access tokens (Supabase teammate also reports whether the project uses JWKS signing keys)
 GROQ_API_KEY
 Groq key
@@ -65,6 +66,7 @@ Meaning
 SUPABASE_URL
 Same project URL
 SUPABASE_ANON_KEY
+value is the publishable key (sb_publishable_...)
 Public anon key
 API_BASE_URL
 Empty string in production (same origin as Flask), http://localhost:5000 in local dev

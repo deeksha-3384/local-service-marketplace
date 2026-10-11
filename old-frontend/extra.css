@@ -1,0 +1,48 @@
+/* Extra styles for new features. Uses the same tokens as styles.css. */
+
+/* ---- Voice / photo intake ---- */
+.intake-block { display: grid; gap: 10px; padding: 14px; border: 1px dashed #cddfc3; border-radius: 14px; background: linear-gradient(145deg, #f9fbf5, #f1f6eb); }
+.intake-head strong { display: block; font: 700 13px/1.3 "Manrope", sans-serif; letter-spacing: -.2px; }
+.intake-head small { display: block; margin-top: 3px; color: var(--muted); font-size: 10px; line-height: 1.5; }
+.intake-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.intake-btn { display: inline-flex; align-items: center; gap: 7px; height: 34px; padding: 0 12px; border: 1px solid #d8e5cf; border-radius: 9px; background: #fff; color: var(--green); font-size: 11px; font-weight: 700; cursor: pointer; transition: background .18s ease, border-color .18s ease, transform .18s ease; }
+.intake-btn:hover { background: #f3f8ee; border-color: #c4d8b8; transform: translateY(-1px); }
+.intake-btn svg { width: 15px; height: 15px; flex: 0 0 auto; }
+.intake-btn-ghost { border-style: dashed; }
+.intake-btn[disabled], .intake-btn.disabled { opacity: .55; cursor: not-allowed; pointer-events: none; }
+.intake-btn.recording { color: #b2432d; border-color: #efc2ba; background: #fdecea; }
+.intake-btn.recording svg { animation: intake-pulse 1s ease-in-out infinite; }
+@keyframes intake-pulse { 0%, 100% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.18); opacity: .6; } }
+.intake-status { color: #647168; font-size: 11px; line-height: 1.5; }
+.intake-status:empty { display: none; }
+.intake-photos { display: flex; flex-wrap: wrap; gap: 8px; }
+.intake-photos:empty { display: none; }
+.intake-photo { position: relative; width: 62px; height: 62px; overflow: hidden; border: 1px solid #e3e8df; border-radius: 10px; background: #eef2ea; }
+.intake-photo img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.intake-photo button { position: absolute; top: 3px; right: 3px; display: grid; place-items: center; width: 18px; height: 18px; padding: 0; border: 0; border-radius: 50%; color: #fff; background: rgba(25, 40, 36, .75); font-size: 12px; line-height: 1; }
+
+/* ---- Diagnosis card ---- */
+.diag-card { display: grid; gap: 9px; padding: 13px; border: 1px solid #e3e8df; border-radius: 13px; background: #fff; }
+.diag-card.stale { opacity: .6; }
+.diag-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.diag-title { color: #98a29a; font: 700 9px/1 "DM Sans", sans-serif; letter-spacing: 1.4px; }
+.diag-summary { margin: 0; color: #38453f; font-size: 12px; line-height: 1.55; }
+.diag-causes { display: grid; gap: 5px; }
+.diag-cause { display: flex; justify-content: space-between; gap: 10px; color: #52605b; font-size: 11px; }
+.diag-questions { margin: 0; padding-left: 16px; color: #52605b; font-size: 11px; line-height: 1.6; }
+.diag-meta { display: flex; flex-wrap: wrap; gap: 12px; color: #87918b; font-size: 10px; }
+.diag-safety { padding: 9px 11px; border-radius: 9px; color: #9a2f1c; background: #fdecea; font-size: 11px; font-weight: 600; line-height: 1.5; }
+.diag-stale-note { color: #8a6410; font-size: 10px; }
+
+/* ---- Meter badge and bar (low = green, medium = amber, high = orange, critical = red) ---- */
+.meter-badge { display: inline-flex; align-items: center; gap: 4px; padding: 3px 8px; border-radius: 999px; font-size: 9px; font-weight: 700; letter-spacing: .4px; text-transform: uppercase; white-space: nowrap; }
+.meter-badge.meter-low { color: #3b7a2c; background: #e4f3dc; }
+.meter-badge.meter-medium { color: #8a6410; background: #fbf0d3; }
+.meter-badge.meter-high { color: #a2531a; background: #fbe5d3; }
+.meter-badge.meter-critical { color: #a3321f; background: #fadbd5; }
+.meter-bar { height: 6px; overflow: hidden; border-radius: 6px; background: #eef1ea; }
+.meter-bar i { display: block; height: 100%; border-radius: 6px; background: currentColor; transition: width .4s ease; }
+.meter-bar.meter-low { color: var(--green-bright); }
+.meter-bar.meter-medium { color: var(--gold); }
+.meter-bar.meter-high { color: var(--orange); }
+.meter-bar.meter-critical { color: #c8553d; }

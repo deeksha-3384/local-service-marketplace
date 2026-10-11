@@ -19,3 +19,5 @@ Thumbs.db
 # Uploads / temp
 *.log
 tmp/
+frontend-dump.txt
+*.zip
