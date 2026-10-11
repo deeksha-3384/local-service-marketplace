@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#f6f7f2" />
+    <meta name="description" content="FixFlow makes it simple to find trusted local help for your home." />
+    <title>FixFlow — home repairs, made easier</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="css/styles.css" />
+    <link rel="stylesheet" href="css/extra.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <header class="sidebar site-nav" id="sidebar">
+        <a class="brand" href="#overview" data-view="overview" aria-label="FixFlow home">
+          <span class="brand-mark"><span></span><span></span><span></span></span>
+          <span>FixFlow<span class="brand-dot">.</span></span>
+        </a>
+        <button class="mobile-menu" id="mobileMenu" aria-label="Open navigation" data-icon="menu"></button>
+        <nav class="main-nav" aria-label="Main navigation">
+          <button class="nav-link active" data-view="overview"><span>Overview</span></button>
+          <button class="nav-link" data-view="requests"><span id="requestNavLabel">Requests</span><span class="nav-count" id="requestNavCount"></span></button>
+          <button class="nav-link" data-view="bookings"><span>Bookings</span></button>
+        </nav>
+        <div class="header-actions">
+          <label class="search-box"><span data-icon="search"></span><input id="globalSearch" type="search" placeholder="Search" autocomplete="off" /><kbd>⌘ K</kbd></label>
+          <button class="icon-button notification-button" aria-label="Notifications" data-action="notifications"><span data-icon="bell"></span><i></i></button>
+          <button class="top-avatar" data-action="account-menu" id="accountButton" aria-label="Account"><span id="topAvatar">P</span></button>
+        </div>
+      </header>
+
+      <main class="main-area">
+        <div class="content-wrap" id="contentWrap">
+          <span id="crumbPage" class="visually-hidden" aria-live="polite">Overview</span>
+          <section class="welcome-row">
+            <div>
+              <div class="eyebrow" id="welcomeDate">TUESDAY, OCTOBER 10</div>
+              <h1 id="welcomeTitle">Good morning, Priya <span class="wave">✳</span></h1>
+              <p class="welcome-subtitle" id="welcomeSubtitle">Get trusted local help for the things that need fixing.</p>
+            </div>
+            <button class="button button-primary" id="welcomeCta" data-action="new-request"><span class="button-icon" data-icon="plus"></span> New request</button>
+          </section>
+
+          <section class="hero-banner">
+            <div class="hero-content">
+              <h2 id="heroTitle">Home repairs,<br />handled.</h2>
+              <p id="heroCopy">Tell us what needs fixing. We’ll help you find the right local professional.</p>
+              <button class="button button-light" id="heroCta" data-action="new-request">Find a professional <span class="arrow">↗</span></button>
+            </div>
+            <div class="hero-illustration" aria-hidden="true">
+              <div class="sun-disc"></div><div class="orbit orbit-one"></div><div class="orbit orbit-two"></div>
+              <div class="hero-home"><div class="home-roof"></div><div class="home-body"><div class="home-window"></div><div class="home-door"></div></div><div class="home-ground"></div></div>
+              <div class="plant plant-one"><i></i><i></i><i></i><b></b></div>
+              <div class="plant plant-two"><i></i><i></i><b></b></div>
+              <div class="hero-spark hero-spark-one">✦</div><div class="hero-spark hero-spark-two">✧</div>
+            </div>
+          </section>
+
+          <div class="dashboard-grid">
+            <div class="dashboard-main-column">
+              <section class="section-block category-section">
+                <div class="section-heading"><div><h2>Services</h2></div><button class="subtle-link" data-action="new-request">New request <span>→</span></button></div>
+                <div class="category-grid" id="categoryGrid"></div>
+              </section>
+
+              <section class="section-block requests-section">
+                <div class="section-heading"><div><h2 id="activeHeading">Your requests <span class="heading-count" id="activeCount">0</span></h2></div><button class="subtle-link" data-view="requests">View all <span>→</span></button></div>
+                <div class="request-list" id="requestPreview"></div>
+              </section>
+            </div>
+
+            <aside class="right-rail">
+              <section class="rail-panel booking-panel">
+                <div class="rail-heading"><div><h3>Upcoming booking</h3></div><span class="rail-heading-icon" data-icon="calendar"></span></div>
+                <div id="upcomingBooking"></div>
+              </section>
+            </aside>
+          </div>
+
+          <section class="list-view hidden" id="listView">
+            <div class="list-header"><div><span class="section-overline" id="listOverline">YOUR HOME, AT A GLANCE</span><h2 id="listTitle">My requests</h2></div><button class="button button-primary" id="listCta" data-action="new-request"><span class="button-icon" data-icon="plus"></span> New request</button></div>
+            <div class="filter-row"><div class="filter-pills" id="filterPills"></div><span class="results-count" id="resultsCount"></span></div>
+            <div class="request-list full-list" id="fullList"></div>
+          </section>
+        </div>
+        <footer class="footer"><span>Made for the place you call home <span class="footer-heart">♥</span></span><span><span class="status-dot"></span> All systems looking good</span></footer>
+      </main>
+    </div>
+
+    <div class="toast-region" id="toastRegion" aria-live="polite"></div>
+    <div class="modal-backdrop hidden" id="modalBackdrop"><div class="modal-card" id="modalCard" role="dialog" aria-modal="true" aria-labelledby="modalTitle"></div></div>
+    <div class="popover-backdrop hidden" id="popoverBackdrop"></div>
+    <script src="js/config.js"></script>
+    <script src="js/app.js" defer></script>
+    <script src="js/components/intake.js" defer></script>
+  </body>
+</html>

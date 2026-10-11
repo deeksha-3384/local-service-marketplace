@@ -331,7 +331,7 @@
       try {
         const upd = await api.patch('/me', body);
         Object.assign(FF.me.profile, upd);
-        $('#lang').value = upd.language;
+        if (FF.setLang) FF.setLang(upd.language);
         toast('Profile saved.', 'success');
       } catch (err) { fail(err); }
       $('#ps').disabled = false;

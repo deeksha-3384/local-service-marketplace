@@ -7,6 +7,7 @@
     not_found: 'Request not found', not_open: 'Request is no longer open', already_assigned: 'Already assigned to a provider',
     missing_location: 'Request has no location', no_planner_providers: 'No planner-mode provider is free right now',
     no_provider_in_range: 'No provider covers this category and area', no_capacity: 'Every matching provider is already assigned',
+    deferred_for_urgent: 'Waiting: the providers who could take this were sent to more urgent jobs',
   };
   const DROP = { request_not_open: 'Request is no longer open', request_already_assigned: 'Request got another assignment', provider_unavailable: 'Provider is unavailable', provider_has_pending_assignment: 'Provider already has a pending assignment' };
 
@@ -107,10 +108,11 @@
 
     function showRun(run) {
       const t = (rid) => titles[rid] || String(rid).slice(0, 8);
-      const rows = run.assignments.map((a) => '<tr><td>' + esc(a.request_title) + '</td><td>' + esc(a.provider_name) + '</td><td>' + esc(a.distance_km) + ' km</td><td>' + Math.round(a.score || 0) + '%</td></tr>').join('');
-      $('#result').innerHTML = '<div class="card"><div class="row"><h2>' + (run.status === 'dry_run' ? 'Preview (not visible to providers)' : 'Published plan') + '</h2>' + chip(run.status === 'dry_run' ? 'proposed' : 'confirmed') + '</div>' +
+      const rows = run.assignments.slice().sort((a, b) => (b.severity_score ?? -1) - (a.severity_score ?? -1) || (b.score || 0) - (a.score || 0)).map((a) => '<tr><td>' + esc(a.request_title) + '</td><td>' + (a.meter_level ? meter(a.meter_level) : '') + '</td><td>' + esc(a.provider_name) + '</td><td>' + esc(a.distance_km) + ' km</td><td>' + Math.round(a.score || 0) + '%</td></tr>').join('');
+      const emTag = run.summary.emergency ? '<span class="chip open">Emergency mode</span>' : '';
+      $('#result').innerHTML = '<div class="card"><div class="row"><h2>' + (run.status === 'dry_run' ? 'Preview (not visible to providers)' : 'Published plan') + '</h2><span class="row gap">' + emTag + chip(run.status === 'dry_run' ? 'proposed' : 'confirmed') + '</span></div>' +
         '<p class="muted">' + (run.summary.assigned || 0) + ' of ' + (run.summary.requests_considered || 0) + ' requests matched · ' + (run.summary.providers_considered || 0) + ' providers available</p>' +
-        (rows ? '<div class="tbl-wrap"><table class="tbl"><thead><tr><th>Request</th><th>Provider</th><th>Distance</th><th>Match</th></tr></thead><tbody>' + rows + '</tbody></table></div>' : '<p class="muted">No assignments could be made.</p>') +
+        (rows ? '<div class="tbl-wrap"><table class="tbl"><thead><tr><th>Request</th><th>Urgency</th><th>Provider</th><th>Distance</th><th>Match</th></tr></thead><tbody>' + rows + '</tbody></table></div>' : '<p class="muted">No assignments could be made.</p>') +
         (run.unassigned.length ? '<h4>Not assigned</h4><ul class="clean">' + run.unassigned.map((u) => '<li>' + esc(t(u.request_id)) + ': ' + esc(WHY[u.reason] || label(u.reason)) + '</li>').join('') + '</ul>' : '') +
         (run.dropped.length ? '<h4>Dropped at publish</h4><ul class="clean">' + run.dropped.map((d) => '<li>' + esc(t(d.request_id)) + ': ' + esc(DROP[d.reason] || label(d.reason)) + '</li>').join('') + '</ul>' : '') +
         (run.status === 'dry_run' && run.assignments.length ? '<div class="row end"><button class="btn" id="pub">' + ic('check') + ' Publish to providers</button></div>' : '') + '</div>';
@@ -121,7 +123,8 @@
         try { showRun(await api.post('/admin/planner/runs/' + run.run_id + '/confirm')); toast('Plan published to providers.', 'success'); loadRuns().catch(() => {}); }
         catch (err) { fail(err); pub.disabled = false; }
       };
-      $('#result').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      $('#result').style.scrollMarginTop = '90px';
+      $('#result').scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
 
     async function loadRuns() {
@@ -139,17 +142,51 @@
     if (!ctx.alive()) return;
     const open = res[0].items.concat(res[1].items);
     open.forEach((i) => { titles[i.id] = i.title; });
-    $('#setup').innerHTML = '<h2>1. Choose requests</h2><p class="muted small">Leave all unticked to plan every open request, most urgent first.</p>' +
-      (open.length ? '<div class="stack">' + open.map((i) => '<label class="row start gap"><input type="checkbox" class="pick" value="' + esc(i.id) + '"> <span><strong>' + esc(i.title) + '</strong> ' + meter(i.meter_level) + ' <span class="muted small">' + esc(label(i.category)) + '</span></span></label>').join('') + '</div>' : '<p class="muted">There are no open requests right now.</p>') +
-      '<h2 style="margin-top:20px">2. Options</h2><label class="row start gap"><input type="checkbox" id="rv"> Only verified providers</label><div class="row end"><button class="btn" id="run">' + ic('zap') + ' Preview plan</button></div>';
-    $('#run').onclick = async function () {
-      const ids = Array.from(document.querySelectorAll('.pick:checked')).map((x) => x.value);
-      const body = { dry_run: true, require_verified: $('#rv').checked };
+    const urgentIds = new Set(open.filter((i) => i.meter_level === 'high' || i.meter_level === 'critical').map((i) => i.id));
+    $('#setup').innerHTML = '<h2>1. What to plan</h2>' +
+      (open.length
+        ? '<p id="scope"></p>' +
+          '<details><summary>Choose specific requests instead (optional)</summary><div class="stack" style="margin-top:10px">' +
+          open.map((i) => '<label class="row start gap"><input type="checkbox" class="pick" autocomplete="off" value="' + esc(i.id) + '"> <span><strong>' + esc(i.title) + '</strong> ' + meter(i.meter_level) + ' <span class="muted small">' + esc(label(i.category)) + '</span></span></label>').join('') +
+          '</div></details>'
+        : '<p class="muted">There are no open requests right now.</p>') +
+      '<h2 style="margin-top:20px">2. Options</h2>' +
+      '<label class="row start gap"><input type="checkbox" id="em" autocomplete="off"> <span><strong>Emergency mode</strong> <span class="muted small">High and Critical requests get providers first; everything else only gets the providers left over.</span></span></label>' +
+      '<label class="row start gap" style="margin-top:8px"><input type="checkbox" id="rv" autocomplete="off"> Only verified providers</label>' +
+      '<p class="muted small" id="emhint"></p>' +
+      '<div class="row end gap"><button class="btn ghost" id="auto">' + ic('zap') + ' Auto-prioritise (emergency)</button><button class="btn" id="run">' + ic('zap') + ' Preview plan</button></div>' +
+      '<p class="muted small" style="text-align:right;margin-top:6px">Auto-prioritise = every open request, Emergency mode on. Preview plan = exactly what is ticked above.</p>';
+
+    function picked() { return Array.from(document.querySelectorAll('.pick:checked')).map((x) => x.value); }
+    function refreshScope() {
+      const ids = picked();
+      const pool = ids.length ? ids : open.map((i) => i.id);
+      const urgent = pool.filter((id) => urgentIds.has(id)).length;
+      const sc = $('#scope');
+      if (sc) sc.innerHTML = '<strong>' + (ids.length ? 'Selected:' : 'Automatic:') + '</strong> plan ' +
+        (ids.length ? ids.length + ' request' + (ids.length === 1 ? '' : 's') + ' you ticked' : 'all ' + open.length + ' open request' + (open.length === 1 ? '' : 's') + ', most urgent first') +
+        '. ' + urgent + ' of them ' + (urgent === 1 ? 'is' : 'are') + ' High or Critical.';
+      $('#emhint').textContent = $('#em').checked && urgent === 0 ? 'None of the requests in this plan are High or Critical, so Emergency mode will not change the result.' : '';
+    }
+    $('#setup').addEventListener('change', refreshScope);
+    refreshScope();
+
+    async function runPlan(auto) {
+      if (auto) {
+        $('#em').checked = true;
+        document.querySelectorAll('.pick').forEach((x) => { x.checked = false; });
+        refreshScope();
+      }
+      const ids = picked();
+      const body = { dry_run: true, require_verified: $('#rv').checked, emergency: $('#em').checked };
       if (ids.length) body.request_ids = ids;
-      const b = $('#run'); b.disabled = true;
+      const a = $('#auto'), b = $('#run'), btn = auto ? a : b, old = btn.innerHTML;
+      a.disabled = true; b.disabled = true; btn.textContent = 'Planning…';
       try { showRun(await api.post('/admin/planner/run', body)); loadRuns().catch(() => {}); } catch (err) { fail(err); }
-      b.disabled = false;
-    };
+      btn.innerHTML = old; a.disabled = false; b.disabled = false;
+    }
+    $('#run').onclick = () => runPlan(false);
+    $('#auto').onclick = () => runPlan(true);
     await loadRuns();
   }
 

@@ -228,7 +228,42 @@
     }
     setTimeout(poll, delay);
   }
-
+  const LANG_EN = { en: 'English', hi: 'Hindi', kn: 'Kannada', ta: 'Tamil', te: 'Telugu', ml: 'Malayalam', mr: 'Marathi', bn: 'Bengali' };
+  function langMenuHtml(cur) {
+    return '<div class="langdd" id="langdd"><button type="button" class="langbtn" id="langbtn" aria-haspopup="listbox" aria-expanded="false" title="Language for AI replies">' +
+      ic('globe', 16) + '<span id="langcur">' + esc(LANGS[cur] || LANGS.en) + '</span><i class="caret"></i></button>' +
+      '<ul class="langmenu" id="langmenu" role="listbox" aria-label="Language for AI replies">' +
+      Object.keys(LANGS).map(function (k) {
+        return '<li role="option" data-v="' + k + '" aria-selected="' + (k === cur) + '"><span>' + esc(LANGS[k]) + '</span><small>' + LANG_EN[k] + '</small>' + ic('check', 16) + '</li>';
+      }).join('') + '</ul></div>';
+  }
+  function initLangMenu(initial) {
+    const dd = document.getElementById('langdd'), btn = document.getElementById('langbtn'), menu = document.getElementById('langmenu');
+    let cur = initial;
+    function mark() {
+      menu.querySelectorAll('li').forEach(function (li) { li.setAttribute('aria-selected', String(li.dataset.v === cur)); });
+      document.getElementById('langcur').textContent = LANGS[cur] || LANGS.en;
+    }
+    function close() { dd.classList.remove('open'); btn.setAttribute('aria-expanded', 'false'); }
+    FF.setLang = function (code) { cur = code; mark(); };
+    btn.onclick = function (e) { e.stopPropagation(); btn.setAttribute('aria-expanded', String(dd.classList.toggle('open'))); };
+    document.addEventListener('click', function (e) { if (!dd.contains(e.target)) close(); });
+    document.addEventListener('keydown', function (e) { if (e.key === 'Escape') close(); });
+    menu.onclick = async function (e) {
+      const li = e.target.closest('li');
+      if (!li) return;
+      close();
+      const prev = cur, next = li.dataset.v;
+      if (next === prev) return;
+      cur = next; mark();
+      try {
+        const upd = await FixAPI.patch('/me', { language: next });
+        FF.me.profile.language = upd.language;
+        cur = upd.language; mark();
+        toast('Saved. AI replies will now be written in ' + LANGS[upd.language] + '.', 'success');
+      } catch (err) { cur = prev; mark(); fail(err); }
+    };
+  }
   async function start(cfg) {
     FF.cfg = cfg;
     const me = await FixAPI.requireRole(cfg.role);
@@ -241,20 +276,14 @@
       '<a class="logo" href="' + cfg.home + '">FixFlow<span>.</span></a>' +
       '<button class="nav-toggle" id="navToggle" aria-label="Menu" type="button">' + ic('menu', 22) + '</button>' +
       '<nav class="navlinks" id="navlinks">' + cfg.links.map(function (l) { return '<a class="navlink" data-h="' + l.hash + '" href="' + l.hash + '">' + ic(l.icon) + '<span>' + esc(l.label) + '</span></a>'; }).join('') + '</nav>' +
-      '<div class="appbar-r"><label class="langsel" title="Language for AI replies">' + ic('globe', 16) + '<select id="lang">' + Object.keys(LANGS).map(function (k) { return '<option value="' + k + '"' + (k === (p.language || 'en') ? ' selected' : '') + '>' + LANGS[k] + '</option>'; }).join('') + '</select></label>' +
+      '<div class="appbar-r">' + langMenuHtml(p.language || 'en') +
       '<div class="who"><span class="avatar">' + esc(initials) + '</span><span><span class="who-name">' + esc(p.full_name || 'Account') + '</span><span class="who-role">' + esc(roleName) + '</span></span></div>' +
       '<button class="btn ghost sm" id="logout" type="button">' + ic('logout', 16) + '<span class="lbl">Log out</span></button></div>' +
       '</div></header><main class="page"><div id="view" class="view"></div></main>';
 
     document.getElementById('navToggle').onclick = function () { document.getElementById('navlinks').classList.toggle('open'); };
     document.getElementById('logout').onclick = async function () { await FixAPI.signOut(); location.href = '/index.html'; };
-    document.getElementById('lang').onchange = async function (e) {
-      try {
-        const upd = await FixAPI.patch('/me', { language: e.target.value });
-        FF.me.profile.language = upd.language;
-        toast('Saved. AI replies will now be written in ' + LANGS[upd.language] + '.', 'success');
-      } catch (err) { fail(err); }
-    };
+    initLangMenu(p.language || 'en');
     window.addEventListener('hashchange', route);
     route();
     poll();
