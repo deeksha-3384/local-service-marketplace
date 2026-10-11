@@ -220,14 +220,21 @@
     await load();
   }
 
-  // ------------------------------------------------------------------ profile + planner vs independent
+    // ------------------------------------------------------------------ profile + planner vs independent
   async function profile() {
     const p = pp(), cur = p.categories || [];
+    const curLangs = p.languages && p.languages.length ? p.languages : ['en'];
+    const phone = FF.me.profile.phone || '';
     const v = FF.view();
     const mode = (m, icon, title, text) => '<button type="button" class="card mode ' + (p.mode === m ? 'on' : '') + '" data-mode="' + m + '"><div class="ico">' + ic(icon, 22) + '</div><h3>' + title + '</h3><p class="muted">' + text + '</p></button>';
-    v.innerHTML = '<div><h1>Profile and work mode</h1>' + (needsSetup() ? '<div class="notice">Choose your skills and service area to start receiving jobs.</div>' : '') + '</div>' +
+    v.innerHTML = '<div><h1>Profile and work mode</h1>' + (needsSetup() ? '<div class="notice">Choose your skills and service area to start receiving jobs.</div>' : '') +
+      (!phone ? '<div class="notice">Add a phone number so customers can reach you after they book you.</div>' : '') + '</div>' +
       '<div class="grid2" id="modes">' + mode('independent', 'search', 'Independent', 'Browse open requests near you and send your own offers. You set your price and your time.') + mode('planner', 'zap', 'Planner', 'The Recovery Planner assigns you the best matched jobs automatically. Accept or decline each one.') + '</div>' +
-      '<form id="pf" class="card" novalidate><h2>Skills and service area</h2><div class="field"><label>Your categories</label><div class="cats">' + CATS.map((c) => '<label class="catpill"><input type="checkbox" value="' + c + '"' + (cur.indexOf(c) >= 0 ? ' checked' : '') + '><span>' + esc(label(c)) + '</span></label>').join('') + '</div></div>' +
+      '<form id="pf" class="card" novalidate><h2>Skills and service area</h2>' +
+      '<div class="field"><label>Your categories</label><div class="cats" id="cats">' + CATS.map((c) => '<label class="catpill"><input type="checkbox" value="' + c + '"' + (cur.indexOf(c) >= 0 ? ' checked' : '') + '><span>' + esc(label(c)) + '</span></label>').join('') + '</div></div>' +
+      '<div class="field"><label>Languages you speak</label><div class="cats" id="langs">' + Object.keys(LANGS).map((k) => '<label class="langpill"><input type="checkbox" value="' + k + '"' + (curLangs.indexOf(k) >= 0 ? ' checked' : '') + '><span>' + esc(LANGS[k]) + '<small>' + esc(FF.LANG_EN[k]) + '</small></span></label>').join('') + '</div>' +
+      '<p class="muted small">Customers can filter offers by language, so list every language you can work in.</p></div>' +
+      '<div class="field"><label for="phone">Phone number</label><input id="phone" type="tel" maxlength="20" value="' + esc(phone) + '" placeholder="+91 98765 43210"><p class="muted small">Shown only to a customer after they book you.</p></div>' +
       '<div class="grid3"><div class="field"><label for="lat">Latitude</label><input id="lat" type="number" step="any" value="' + (p.lat == null ? '' : esc(p.lat)) + '"></div><div class="field"><label for="lng">Longitude</label><input id="lng" type="number" step="any" value="' + (p.lng == null ? '' : esc(p.lng)) + '"></div>' +
       '<div class="field"><label>&nbsp;</label><button class="btn ghost block" type="button" id="loc">' + ic('pin') + ' Use my location</button></div></div>' +
       '<div class="field"><label for="rad">Service radius (km)</label><input id="rad" type="number" min="1" max="500" step="1" value="' + esc(p.service_radius_km || 15) + '"></div>' +
@@ -249,41 +256,24 @@
     };
     $('#pf').onsubmit = async function (e) {
       e.preventDefault();
-      const cats = Array.from(document.querySelectorAll('.catpill input:checked')).map((x) => x.value);
+      const cats = Array.from(document.querySelectorAll('#cats input:checked')).map((x) => x.value);
+      const langs = Array.from(document.querySelectorAll('#langs input:checked')).map((x) => x.value);
+      const phoneVal = $('#phone').value.trim();
       const lat = parseFloat($('#lat').value), lng = parseFloat($('#lng').value), rad = parseFloat($('#rad').value);
       if (!cats.length) return toast('Pick at least one category.', 'error');
+      if (!langs.length) return toast('Pick at least one language you speak.', 'error');
+      if (!/^[0-9+\-\s()]{6,20}$/.test(phoneVal)) return toast('Enter a valid phone number (digits, +, spaces and dashes).', 'error');
       if (!isFinite(lat) || !isFinite(lng)) return toast('Add your location.', 'error');
       if (!(rad > 0 && rad <= 500)) return toast('Service radius must be between 1 and 500 km.', 'error');
       $('#save').disabled = true;
       try {
-        FF.me.provider_profile = await api.put('/me/provider-profile', { categories: cats, lat: lat, lng: lng, service_radius_km: rad, bio: $('#bio').value.trim() || null });
+        if (phoneVal !== (FF.me.profile.phone || '')) {
+          const upd = await api.patch('/me', { phone: phoneVal });
+          FF.me.profile.phone = upd.phone;
+        }
+        FF.me.provider_profile = await api.put('/me/provider-profile', { categories: cats, languages: langs, lat: lat, lng: lng, service_radius_km: rad, bio: $('#bio').value.trim() || null });
         toast('Profile saved. You are ready for jobs.', 'success');
       } catch (err) { fail(err); }
       $('#save').disabled = false;
     };
   }
-
-  FF.start({
-    role: 'provider', home: '#/home',
-    links: [
-      { hash: '#/home', label: 'Home', icon: 'home' },
-      { hash: '#/feed', label: 'Jobs', icon: 'search', also: ['#/r/'] },
-      { hash: '#/assignments', label: 'Assignments', icon: 'zap' },
-      { hash: '#/bookings', label: 'Bookings', icon: 'calendar' },
-      { hash: '#/profile', label: 'Profile and mode', icon: 'sliders' },
-    ],
-    routes: [
-      { re: /^#\/home$/, fn: home }, { re: /^#\/feed$/, fn: feed }, { re: /^#\/r\/([0-9a-fA-F-]{36})$/, fn: detail },
-      { re: /^#\/assignments$/, fn: assignments }, { re: /^#\/bookings$/, fn: bookings }, { re: /^#\/profile$/, fn: profile },
-    ],
-    toast: function (ev, me) {
-      const mine = ev.payload && ev.payload.provider_id === me.profile.id;
-      if (ev.type === 'planner.assigned' && mine) return 'New job assigned to you';
-      if (ev.type === 'offer.accepted' && mine) return 'Your offer was accepted!';
-      if (ev.type === 'offer.rejected' && mine) return 'An offer of yours was declined';
-      if (ev.type === 'request.cancelled' && mine) return 'A customer deleted a job you were booked for. Check your Bookings.';
-      if (ev.type === 'request.created' && me.provider_profile && me.provider_profile.mode === 'independent') return 'New job in your area';
-      return null;
-    },
-  });
-})();

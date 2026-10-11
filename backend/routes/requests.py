@@ -21,6 +21,7 @@ from services.access import (
     get_request,
     mask_for_provider,
 )
+from services.booking_queries import phone_visible
 from services.events import add_event
 from validation import Schema, parse_body
 
@@ -79,8 +80,10 @@ def _decorate(req, user):
         {"rid": rid},
     )["n"]
     booking = fetch_one(
-        "SELECT id, provider_id, lower(slot) AS slot_start, upper(slot) AS slot_end, status::text AS status "
-        "FROM bookings WHERE request_id = :rid AND status <> 'cancelled' ORDER BY created_at DESC LIMIT 1",
+        "SELECT b.id, b.provider_id, lower(b.slot) AS slot_start, upper(b.slot) AS slot_end, "
+        "b.status::text AS status, pv.full_name AS provider_name, pv.phone AS provider_phone "
+        "FROM bookings b JOIN profiles pv ON pv.id = b.provider_id "
+        "WHERE b.request_id = :rid AND b.status <> 'cancelled' ORDER BY b.created_at DESC LIMIT 1",
         {"rid": rid},
     )
     if booking and user.role == "provider" and str(booking["provider_id"]) != user.id:
@@ -91,6 +94,9 @@ def _decorate(req, user):
             "provider_id": booking["provider_id"],
             "status": booking["status"],
             "slot": {"start": booking["slot_start"], "end": booking["slot_end"]},
+            "provider_name": booking["provider_name"],
+            "provider_phone": booking["provider_phone"]
+            if phone_visible(booking["status"], req["customer_id"], user) else None,
         }
         if booking
         else None

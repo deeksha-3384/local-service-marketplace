@@ -57,8 +57,7 @@ def list_bookings():
         BOOKING_SELECT + f" WHERE {clause} ORDER BY {SORT_COLUMNS[sort]} {order}, b.id LIMIT :limit OFFSET :offset",
         {**params, "limit": limit, "offset": offset},
     )
-    return jsonify(paginated([format_booking(r) for r in rows], page, limit, total))
-
+    return jsonify(paginated([format_booking(r, user) for r in rows], page, limit, total))
 
 @bp.get("/bookings/<uuid:booking_id>")
 @require_auth()
@@ -69,7 +68,7 @@ def get_booking_detail(booking_id):
         raise ApiError(404, "NOT_FOUND", "Booking not found.")
     if not _involved(user, row):
         raise forbidden()
-    return jsonify(format_booking(row))
+    return jsonify(format_booking(row, user))
 
 
 @bp.post("/bookings/<uuid:booking_id>/status")
@@ -120,4 +119,4 @@ def update_booking_status(booking_id):
                 {"rid": req["id"]})
             add_event(req["id"], "request.status_changed", user.id, {"from": req["status"], "to": "open"})
     commit()
-    return jsonify(format_booking(get_booking(booking_id)))
+    return jsonify(format_booking(get_booking(booking_id), user))

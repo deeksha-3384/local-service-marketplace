@@ -10,7 +10,8 @@ from db_utils import commit, fetch_all, fetch_one, haversine_sql, run, sqlstate
 from errors import ApiError
 from extensions import db
 from pagination import paginated, parse_pagination, parse_sort
-from query_utils import parse_float
+from query_utils import parse_choice, parse_float
+from services import diagnosis as dg
 from services.access import ensure_request_access, forbidden, get_request
 from services.booking_queries import format_booking, get_booking
 from services.events import add_event
@@ -136,6 +137,7 @@ def list_offers(request_id):
     max_price = parse_float("max_price", 0)
     min_rating = parse_float("min_rating", 0, 5)
     max_eta = parse_float("max_eta", 0)
+    language = parse_choice("language", set(dg.LANGUAGE_NAMES))
 
     params = {"rid": request_id}
     where = ["o.request_id = :rid", "o.status IN ('pending', 'accepted')"]
@@ -148,12 +150,15 @@ def list_offers(request_id):
     if max_eta is not None:
         where.append("o.eta_minutes <= :max_eta")
         params["max_eta"] = max_eta
+    if language:
+        where.append("CAST(:language AS text) = ANY(COALESCE(pp.languages, CAST(ARRAY['en'] AS text[])))")
+        params["language"] = language
 
     distance = haversine_sql("r.lat", "r.lng", "pp.lat", "pp.lng")
     cte = f"""
         WITH base AS (
             SELECT {OFFER_COLUMNS},
-                   p.full_name AS provider_name, pp.rating, pp.rating_count, pp.is_verified,
+                   p.full_name AS provider_name, pp.rating, pp.rating_count, pp.is_verified, pp.languages,
                    CASE WHEN pp.lat IS NULL OR pp.lng IS NULL THEN NULL ELSE {distance} END AS distance_km
             FROM offers o
             JOIN requests r ON r.id = o.request_id
@@ -177,6 +182,7 @@ def list_offers(request_id):
             "rating": row.pop("rating"),
             "rating_count": row.pop("rating_count"),
             "is_verified": row.pop("is_verified"),
+            "languages": row.pop("languages") or ["en"],
             "distance_km": round(distance_km, 2) if distance_km is not None else None,
         }
         items.append(row)
@@ -271,4 +277,4 @@ def accept_offer(offer_id):
               {"booking_id": booking["id"], "provider_id": offer["provider_id"]})
     add_event(req["id"], "request.status_changed", user.id, {"from": req["status"], "to": "booked"})
     commit()
-    return jsonify(format_booking(get_booking(booking["id"]))), 201
+    return jsonify(format_booking(get_booking(booking["id"]), user)), 201

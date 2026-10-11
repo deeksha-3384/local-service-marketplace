@@ -16,7 +16,7 @@ PROFILE_SQL = (
     "FROM profiles WHERE id = :id"
 )
 PROVIDER_SQL = (
-    "SELECT user_id, categories, lat, lng, service_radius_km, mode::text AS mode, "
+    "SELECT user_id, categories, languages, lat, lng, service_radius_km, mode::text AS mode, "
     "rating, rating_count, is_verified, bio FROM provider_profiles WHERE user_id = :id"
 )
 
@@ -39,6 +39,7 @@ class ProfileUpdate(Schema):
 
 class ProviderProfileUpdate(Schema):
     categories: list[str] = Field(min_length=1, max_length=8)
+    languages: list[str] | None = Field(default=None, min_length=1, max_length=8)
     lat: float = Field(ge=-90, le=90)
     lng: float = Field(ge=-180, le=180)
     service_radius_km: float = Field(gt=0, le=500)
@@ -54,6 +55,20 @@ class ProviderProfileUpdate(Schema):
                 raise ValueError("must be one of: " + ", ".join(dg.CATEGORIES))
             if value not in cleaned:
                 cleaned.append(value)
+        return cleaned
+
+    @field_validator("languages")
+    @classmethod
+    def _languages(cls, values):
+        if values is None:
+            return None
+        cleaned = []
+        for value in values:
+            code = dg.known_language(value)
+            if code is None:
+                raise ValueError("must be one of: " + ", ".join(sorted(dg.LANGUAGE_NAMES)))
+            if code not in cleaned:
+                cleaned.append(code)
         return cleaned
 
 
@@ -93,11 +108,14 @@ def put_provider_profile():
     run(
         """
         INSERT INTO provider_profiles
-            (user_id, categories, lat, lng, service_radius_km, mode, rating, rating_count, is_verified, bio)
+            (user_id, categories, languages, lat, lng, service_radius_km, mode, rating, rating_count, is_verified, bio)
         VALUES
-            (:uid, CAST(:categories AS text[]), :lat, :lng, :radius, 'independent', 0, 0, false, :bio)
+            (:uid, CAST(:categories AS text[]),
+             COALESCE(CAST(:languages AS text[]), CAST(ARRAY['en'] AS text[])),
+             :lat, :lng, :radius, 'independent', 0, 0, false, :bio)
         ON CONFLICT (user_id) DO UPDATE SET
             categories = EXCLUDED.categories,
+            languages = COALESCE(CAST(:languages AS text[]), provider_profiles.languages),
             lat = EXCLUDED.lat,
             lng = EXCLUDED.lng,
             service_radius_km = EXCLUDED.service_radius_km,
@@ -106,6 +124,7 @@ def put_provider_profile():
         {
             "uid": user.id,
             "categories": body.categories,
+            "languages": body.languages,
             "lat": body.lat,
             "lng": body.lng,
             "radius": body.service_radius_km,

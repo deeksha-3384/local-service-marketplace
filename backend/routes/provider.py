@@ -205,7 +205,7 @@ def provider_dashboard():
 @require_auth()
 def public_provider(provider_id):
     row = fetch_one(
-        "SELECT p.id, p.full_name, pp.categories, pp.service_radius_km, pp.rating, pp.rating_count, "
+        "SELECT p.id, p.full_name, pp.categories, pp.languages, pp.service_radius_km, pp.rating, pp.rating_count, "
         "pp.is_verified, pp.bio FROM profiles p JOIN provider_profiles pp ON pp.user_id = p.id "
         "WHERE p.id = :id AND p.role = 'provider' AND p.is_active",
         {"id": provider_id},

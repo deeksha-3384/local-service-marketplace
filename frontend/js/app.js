@@ -24,6 +24,7 @@
     chart: 'M12 20V10M18 20V4M6 20v-4',
     inbox: 'M22 12h-6l-2 3h-4l-2-3H2M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z',
     search: 'M11 19a8 8 0 1 0 0-16 8 8 0 0 0 0 16zM21 21l-4.35-4.35',
+    phone: 'M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z',
     globe: 'M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20zM2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z',
   };
   const ic = (n, s) => '<svg class="ic" width="' + (s || 18) + '" height="' + (s || 18) + '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="' + (ICONS[n] || '') + '"/></svg>';
@@ -228,13 +229,13 @@
     }
     setTimeout(poll, delay);
   }
-  const LANG_EN = { en: 'English', hi: 'Hindi', kn: 'Kannada', ta: 'Tamil', te: 'Telugu', ml: 'Malayalam', mr: 'Marathi', bn: 'Bengali' };
+  FF.LANG_EN = { en: 'English', hi: 'Hindi', kn: 'Kannada', ta: 'Tamil', te: 'Telugu', ml: 'Malayalam', mr: 'Marathi', bn: 'Bengali' };
   function langMenuHtml(cur) {
     return '<div class="langdd" id="langdd"><button type="button" class="langbtn" id="langbtn" aria-haspopup="listbox" aria-expanded="false" title="Language for AI replies">' +
       ic('globe', 16) + '<span id="langcur">' + esc(LANGS[cur] || LANGS.en) + '</span><i class="caret"></i></button>' +
       '<ul class="langmenu" id="langmenu" role="listbox" aria-label="Language for AI replies">' +
       Object.keys(LANGS).map(function (k) {
-        return '<li role="option" data-v="' + k + '" aria-selected="' + (k === cur) + '"><span>' + esc(LANGS[k]) + '</span><small>' + LANG_EN[k] + '</small>' + ic('check', 16) + '</li>';
+        return '<li role="option" data-v="' + k + '" aria-selected="' + (k === cur) + '"><span>' + esc(LANGS[k]) + '</span><small>' + FF.LANG_EN[k] + '</small>' + ic('check', 16) + '</li>';
       }).join('') + '</ul></div>';
   }
   function initLangMenu(initial) {
